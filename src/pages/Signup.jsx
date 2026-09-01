@@ -32,30 +32,32 @@ export default function Signup() {
     setError('')
     setLoading(true)
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: { username: username.trim() },
-      },
-    })
-    setLoading(false)
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { username: username.trim() },
+        },
+      })
 
-    if (signUpError) {
-      setError(signUpError.message)
-      return
+      if (signUpError) {
+        setError(signUpError.message)
+        return
+      }
+
+      // If email confirmation is disabled, user is immediately logged in
+      if (data?.session) {
+        navigate('/')
+        return
+      }
+
+      setError('Account created! Please check your email to confirm your account, then log in.')
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred during signup.')
+    } finally {
+      setLoading(false)
     }
-
-    // If email confirmation is disabled, take the user straight to chat.
-    if (data?.session) {
-      navigate('/')
-      return
-    }
-
-    // Email confirmation enabled: create profile is handled by trigger, show message.
-    setError(
-      'Account created! Please check your email to confirm your account, then log in.',
-    )
   }
 
   const input =
