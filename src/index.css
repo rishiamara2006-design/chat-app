@@ -1,0 +1,370 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --background: #07090d;
+  --surface: #0d1118;
+  --surface-hover: #111722;
+
+  --border: #1c2733;
+  --border-hover: #2b91a3;
+
+  --primary: #62e6f5;
+  --primary-soft: rgba(98, 230, 245, 0.12);
+
+  --purple: #9b7cff;
+
+  --text: #f2f5f7;
+  --text-secondary: #8d98a5;
+}
+
+/* =========================
+   BASIC & MOBILE RESETS
+   ========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* =========================
+   VERY SUBTLE GRID
+   ========================= */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(
+      rgba(255,255,255,0.018) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+  mask-image: linear-gradient(
+    to bottom,
+    black,
+    transparent 80%
+  );
+}
+
+/* =========================
+   HEADINGS (RESPONSIVE)
+   ========================= */
+
+h1,
+h2,
+h3,
+h4 {
+  margin-top: 0;
+  color: var(--text);
+  font-family: "Space Mono", monospace;
+  letter-spacing: -1px;
+}
+
+h1 {
+  font-size: clamp(28px, 6vw, 52px);
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: clamp(22px, 4vw, 34px);
+}
+
+h3 {
+  font-size: clamp(18px, 3vw, 22px);
+}
+
+/* =========================
+   NORMAL TEXT
+   ========================= */
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* =========================
+   CLEAN CARD
+   ========================= */
+
+.pixel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+@media (min-width: 768px) {
+  .pixel-card {
+    padding: 24px;
+  }
+}
+
+.pixel-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+/* =========================
+   SIMPLE KEY BUTTON
+   ========================= */
+
+.pixel-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 16px;
+  background: #10161f;
+  border: 1px solid #263442;
+  border-radius: 6px;
+  color: #dceff2;
+  font-family: "Space Mono", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #05070a;
+  transition:
+    transform 0.1s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.pixel-key:hover {
+  background: #131d28;
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow:
+    0 2px 0 #05070a,
+    0 0 12px rgba(98, 230, 245, 0.12);
+}
+
+.pixel-key:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* =========================
+   PRIMARY BUTTON
+   ========================= */
+
+.pixel-key.primary {
+  background: var(--primary);
+  color: #061014;
+  border-color: var(--primary);
+  box-shadow: 0 2px 0 #24636d;
+}
+
+.pixel-key.primary:hover {
+  background: #7cecf8;
+  color: #061014;
+  box-shadow:
+    0 2px 0 #24636d,
+    0 0 18px rgba(98, 230, 245, 0.2);
+}
+
+/* =========================
+   PURPLE BUTTON
+   ========================= */
+
+.pixel-key.purple {
+  color: #c7baff;
+  border-color: #443b65;
+}
+
+.pixel-key.purple:hover {
+  border-color: var(--purple);
+  color: #d8ceff;
+  box-shadow: 0 0 14px rgba(155, 124, 255, 0.15);
+}
+
+/* =========================
+   INPUT
+   ========================= */
+
+input,
+textarea,
+select {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  background: #090d13;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #56616e;
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: #2a3948;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* =========================
+   LABEL
+   ========================= */
+
+label {
+  display: block;
+  margin-bottom: 7px;
+  color: #9aa6b3;
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* =========================
+   NAVBAR
+   ========================= */
+
+nav,
+.navbar {
+  background: rgba(7, 9, 13, 0.9);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+/* =========================
+   LINKS
+   ========================= */
+
+a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--primary);
+}
+
+/* =========================
+   SMALL STATUS
+   ========================= */
+
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(98, 230, 245, 0.6);
+}
+
+/* =========================
+   BADGE
+   ========================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  background: rgba(98, 230, 245, 0.06);
+  border: 1px solid rgba(98, 230, 245, 0.2);
+  border-radius: 4px;
+  color: var(--primary);
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* =========================
+   DIVIDER
+   ========================= */
+
+.pixel-divider {
+  height: 1px;
+  width: 100%;
+  margin: 24px 0;
+  background: var(--border);
+}
+
+/* =========================
+   SCROLLBAR
+   ========================= */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #26313d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4c5d;
+}
+
+/* =========================
+   SELECTION
+   ========================= */
+
+::selection {
+  background: rgba(98, 230, 245, 0.2);
+  color: white;
+}
