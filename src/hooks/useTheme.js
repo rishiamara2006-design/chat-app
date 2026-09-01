@@ -52,10 +52,19 @@ export const THEMES = {
 }
 
 export function useTheme() {
-  // Load saved theme from localStorage or fallback to 'black'
   const [currentTheme, setCurrentTheme] = useState(() => {
     return localStorage.getItem('app_theme') || 'black'
   })
+
+  // Sync Tailwind's dark class on <html>
+  useEffect(() => {
+    const isDark = currentTheme !== 'white'
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [currentTheme])
 
   const changeTheme = (themeId) => {
     if (THEMES[themeId]) {
@@ -64,11 +73,24 @@ export function useTheme() {
     }
   }
 
+  const dark = currentTheme !== 'white'
+  const setDark = (val) => {
+    const nextDark = typeof val === 'function' ? val(dark) : val
+    changeTheme(nextDark ? 'black' : 'white')
+  }
+
   const themeColors = THEMES[currentTheme] || THEMES.black
 
   return {
     currentTheme,
     themeColors,
     changeTheme,
+    dark,
+    setDark,
+    // Allows `const [dark, setDark] = useTheme()` in Signup & Login
+    [Symbol.iterator]: function* () {
+      yield dark
+      yield setDark
+    },
   }
 }
