@@ -264,7 +264,6 @@ export default function Sidebar({
               }}
               title={`Logged in as ${myName}`}
             >
-              {/* Profile Avatar Circle */}
               <div
                 style={{
                   width: '32px',
@@ -294,7 +293,6 @@ export default function Sidebar({
                 >
                   {myInitial}
                 </div>
-                {/* Active Status Dot */}
                 <span
                   style={{
                     position: 'absolute',
@@ -309,7 +307,6 @@ export default function Sidebar({
                 />
               </div>
 
-              {/* Self Username */}
               <span
                 style={{
                   fontSize: '13px',
@@ -650,14 +647,13 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Bottom Bar: Themes & Sign Out */}
+      {/* Bottom Bar: Themes Only */}
       <div
         ref={menuRef}
         style={{
           padding: '12px 18px',
           borderTop: `1px solid ${colors.border}`,
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
           position: 'relative',
           backgroundColor: colors.cardBg,
@@ -680,31 +676,6 @@ export default function Sidebar({
           }}
         >
           <span>⚙️</span> Themes
-        </button>
-
-        <button
-          onClick={handleSignOut}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#ef4444',
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 8px',
-            borderRadius: '8px',
-          }}
-          title="Sign out of your account"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          Logout
         </button>
 
         {showThemeMenu && (
