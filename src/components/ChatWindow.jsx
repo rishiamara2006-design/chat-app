@@ -41,14 +41,16 @@ function StatusCheckmarks({ isRead, accentColor, subtextColor }) {
 
 function MessageItem({
   message,
-  isMine,
+  currentUserId,
   themeColors,
   formatTime,
   isFirstInGroup,
   isLastInGroup,
   otherUser,
+  onDeleteMessage,
 }) {
-  const [isHovered, setIsHovered] = useState(false)
+  const [isInteracting, setIsInteracting] = useState(false)
+  const isMine = String(message.sender_id) === String(currentUserId)
   const time = formatTime(message.created_at)
   const otherInitial = (otherUser?.username || otherUser?.email || '?')[0].toUpperCase()
 
@@ -65,18 +67,20 @@ function MessageItem({
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => isMine && setIsInteracting((prev) => !prev)}
+      onMouseEnter={() => isMine && setIsInteracting(true)}
+      onMouseLeave={() => isMine && setIsInteracting(false)}
       style={{
         display: 'flex',
         flexDirection: 'row',
         justifyContent: isMine ? 'flex-end' : 'flex-start',
-        alignItems: 'flex-end',
-        gap: '8px',
+        alignItems: 'center',
+        gap: '6px',
         width: '100%',
-        marginTop: isFirstInGroup ? '8px' : '2px',
+        marginTop: isFirstInGroup ? '10px' : '2px',
         position: 'relative',
         zIndex: 2,
+        cursor: isMine ? 'pointer' : 'default',
       }}
     >
       {!isMine && (
@@ -115,6 +119,37 @@ function MessageItem({
         </div>
       )}
 
+      {/* Delete button: Only visible on hover or tap */}
+      {isMine && isInteracting && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDeleteMessage(message)
+          }}
+          title={message.media_url ? 'Delete Photo' : 'Delete Message'}
+          style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '28px',
+            height: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#ef4444',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+        </button>
+      )}
+
       <div
         style={{
           display: 'flex',
@@ -136,12 +171,11 @@ function MessageItem({
             boxShadow: isMine
               ? '0 4px 12px rgba(0,0,0,0.12)'
               : '0 2px 8px rgba(0,0,0,0.04)',
-            cursor: 'default',
-            transition: 'transform 0.1s ease',
+            position: 'relative',
           }}
         >
           {message.media_url && (
-            <div style={{ marginBottom: message.message ? '6px' : '0' }}>
+            <div style={{ position: 'relative', marginBottom: message.message ? '6px' : '0' }}>
               {isImage ? (
                 <img
                   src={message.media_url}
@@ -154,13 +188,17 @@ function MessageItem({
                     display: 'block',
                     cursor: 'pointer',
                   }}
-                  onClick={() => window.open(message.media_url, '_blank')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    window.open(message.media_url, '_blank')
+                  }}
                 />
               ) : (
                 <a
                   href={message.media_url}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -193,11 +231,9 @@ function MessageItem({
             gap: '4px',
             marginTop: '3px',
             padding: '0 6px',
-            opacity: isHovered ? 0.9 : 0,
-            maxHeight: isHovered ? '16px' : '0px',
-            transition: 'opacity 0.2s ease, max-height 0.2s ease',
+            opacity: isInteracting ? 0.9 : 0.45,
+            transition: 'opacity 0.2s ease',
             userSelect: 'none',
-            pointerEvents: 'none',
           }}
         >
           <span
@@ -245,11 +281,14 @@ export default function ChatWindow({
   const [isOtherTyping, setIsOtherTyping] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [activeCall, setActiveCall] = useState(null)
+  const [showClearChatModal, setShowClearChatModal] = useState(false)
+  const [showMenuDropdown, setShowMenuDropdown] = useState(false)
 
   const endRef = useRef(null)
   const channelRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const incomingTypingTimeoutRef = useRef(null)
+  const menuRef = useRef(null)
 
   const currentUserId = user?.id
 
@@ -258,6 +297,17 @@ export default function ChatWindow({
     const d = new Date(isoString)
     return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
   }
+
+  // Close dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenuDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     if (!currentUserId || !otherUser) return
@@ -328,6 +378,18 @@ export default function ChatWindow({
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages' },
+        (payload) => {
+          if (payload.old?.id) {
+            setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id))
+          }
+        }
+      )
+      .on('broadcast', { event: 'clear-chat' }, () => {
+        setMessages([])
+      })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (payload?.userId === otherUser.id) {
           setIsOtherTyping(Boolean(payload.isTyping))
@@ -386,6 +448,58 @@ export default function ChatWindow({
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isOtherTyping])
+
+  // Individual message deletion (and storage file removal)
+  const handleDeleteMessage = async (msg) => {
+    if (!window.confirm('Delete this message?')) return
+
+    try {
+      if (msg.media_url) {
+        const parts = msg.media_url.split('/chat-attachments/')
+        if (parts.length > 1) {
+          const filePath = decodeURIComponent(parts[1])
+          await supabase.storage.from('chat-attachments').remove([filePath])
+        }
+      }
+
+      const { error } = await supabase.from('messages').delete().eq('id', msg.id)
+      if (error) throw error
+
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id))
+    } catch (err) {
+      console.error(err)
+      alert(err.message || 'Failed to delete message.')
+    }
+  }
+
+  // Clear entire conversation
+  const handleClearEntireChat = async () => {
+    setShowClearChatModal(false)
+    if (messages.length === 0) return
+
+    const messageIds = messages.map((m) => m.id)
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .in('id', messageIds)
+
+      if (error) throw error
+
+      setMessages([])
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'clear-chat',
+          payload: { by: currentUserId },
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      alert(err.message || 'Failed to clear conversation. Check Supabase delete policy.')
+    }
+  }
 
   const sendTypingStatus = (isTyping) => {
     if (!channelRef.current) return
@@ -481,12 +595,13 @@ export default function ChatWindow({
         overflow: 'hidden',
       }}
     >
+      {/* Top Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 24px',
+          padding: '12px 20px',
           borderBottom: `1px solid ${themeColors.border}`,
           backgroundColor: themeColors.cardBg,
           backdropFilter: 'blur(12px)',
@@ -555,7 +670,9 @@ export default function ChatWindow({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Top Right Subtle Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
+          {/* Call button */}
           <button
             type="button"
             onClick={() => setActiveCall({ isIncoming: false, offer: null })}
@@ -563,13 +680,14 @@ export default function ChatWindow({
               background: 'none',
               border: `1px solid ${themeColors.border}`,
               borderRadius: '50%',
-              width: '34px',
-              height: '34px',
+              width: '36px',
+              height: '36px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: themeColors.text,
               cursor: 'pointer',
+              transition: 'background 0.2s ease',
             }}
             title="Start Voice Call"
           >
@@ -578,6 +696,83 @@ export default function ChatWindow({
             </svg>
           </button>
 
+          {/* Minimal 3-dots Menu Button */}
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setShowMenuDropdown((prev) => !prev)}
+              style={{
+                background: showMenuDropdown ? 'rgba(255,255,255,0.08)' : 'none',
+                border: `1px solid ${themeColors.border}`,
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: themeColors.text,
+                cursor: 'pointer',
+              }}
+              title="More Options"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+
+            {/* Clean Dropdown Menu */}
+            {showMenuDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '44px',
+                  right: 0,
+                  backgroundColor: themeColors.cardBg,
+                  border: `1px solid ${themeColors.border}`,
+                  borderRadius: '12px',
+                  padding: '6px',
+                  minWidth: '170px',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                  zIndex: 20,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenuDropdown(false)
+                    setShowClearChatModal(true)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#ef4444',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  <span>Clear History</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Theme Avatar */}
           <img
             key={themeColors.avatar}
             src={themeColors.avatar || 'https://i.postimg.cc/CK5WqKJS/download-(1).jpg'}
@@ -585,10 +780,10 @@ export default function ChatWindow({
             referrerPolicy="no-referrer"
             crossOrigin="anonymous"
             style={{
-              width: '42px',
-              height: '42px',
-              minWidth: '42px',
-              minHeight: '42px',
+              width: '38px',
+              height: '38px',
+              minWidth: '38px',
+              minHeight: '38px',
               objectFit: 'cover',
               borderRadius: '50%',
               border: `2px solid ${themeColors.border}`,
@@ -598,6 +793,78 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Clear Chat Confirmation Modal */}
+      {showClearChatModal && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: themeColors.cardBg,
+              border: `1px solid ${themeColors.border}`,
+              padding: '24px',
+              borderRadius: '20px',
+              maxWidth: '340px',
+              width: '90%',
+              textAlign: 'center',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: themeColors.text }}>
+              Clear Chat History?
+            </h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13.5px', color: themeColors.subtext, lineHeight: '1.5' }}>
+              Are you sure you want to permanently delete all messages with {otherName}?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setShowClearChatModal(false)}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '12px',
+                  border: `1px solid ${themeColors.border}`,
+                  backgroundColor: 'transparent',
+                  color: themeColors.text,
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearEntireChat}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Messages Feed */}
       <div
         style={{
           flex: 1,
@@ -620,7 +887,6 @@ export default function ChatWindow({
           }}
         >
           {messages.map((m, index) => {
-            const isMine = m.sender_id === currentUserId
             const prevMessage = messages[index - 1]
             const nextMessage = messages[index + 1]
 
@@ -631,12 +897,13 @@ export default function ChatWindow({
               <MessageItem
                 key={m.id}
                 message={m}
-                isMine={isMine}
+                currentUserId={currentUserId}
                 isFirstInGroup={isFirstInGroup}
                 isLastInGroup={isLastInGroup}
                 otherUser={otherUser}
                 themeColors={themeColors}
                 formatTime={formatTime}
+                onDeleteMessage={handleDeleteMessage}
               />
             )
           })}
@@ -644,6 +911,7 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Footer / Input Field */}
       <div
         style={{
           padding: '12px 24px 20px',
