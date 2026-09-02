@@ -32,16 +32,22 @@ export default function Sidebar({
   const [conversations, setConversations] = useState({})
   const [searchQuery, setSearchQuery] = useState('')
   const [showThemeMenu, setShowThemeMenu] = useState(false)
+  const [showProfileCard, setShowProfileCard] = useState(false)
+
   const menuRef = useRef(null)
+  const profileRef = useRef(null)
 
   const colors = { ...DEFAULT_THEME_COLORS, ...(themeColors || {}) }
   const currentUserId = currentUser?.id
 
-  // Close popup menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowThemeMenu(false)
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfileCard(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -79,7 +85,7 @@ export default function Sidebar({
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
   }
 
-  // 1. Fetch all user profiles for display lookup
+  // Fetch profiles for displaying names
   useEffect(() => {
     if (!currentUserId) return
 
@@ -97,7 +103,7 @@ export default function Sidebar({
     fetchUsers()
   }, [currentUserId])
 
-  // 2. Fetch latest messages & build active conversation list
+  // Fetch conversations metadata
   useEffect(() => {
     if (!currentUserId) return
 
@@ -135,7 +141,6 @@ export default function Sidebar({
 
     fetchMetadata()
 
-    // Realtime message updates for sidebar badges
     const channel = supabase
       .channel('sidebar-messages-sync')
       .on(
@@ -182,7 +187,7 @@ export default function Sidebar({
     onSelectUser(userItem)
   }
 
-  // Display only active conversations by default; search the full userbase when typing
+  // Filter conversations
   const filteredUsers = useMemo(() => {
     const trimmedQuery = searchQuery.toLowerCase().trim()
 
@@ -193,13 +198,19 @@ export default function Sidebar({
       })
     }
 
-    // Default view: show users only if there is conversation history or if currently selected
     return users.filter((u) => {
       const hasMessages = Boolean(conversations[u.id]?.lastMessageTime)
       const isSelected = selectedUser?.id === u.id
       return hasMessages || isSelected
     })
   }, [users, conversations, searchQuery, selectedUser])
+
+  // Current user display calculations
+  const myName =
+    currentUser?.user_metadata?.username ||
+    currentUser?.email?.split('@')[0] ||
+    'Me'
+  const myInitial = myName[0]?.toUpperCase() || 'U'
 
   return (
     <div
@@ -212,19 +223,206 @@ export default function Sidebar({
         userSelect: 'none',
       }}
     >
-      {/* Sidebar Header */}
-      <div style={{ padding: '20px 20px 12px 20px' }}>
-        <h1
+      {/* Top Header Section */}
+      <div style={{ padding: '18px 20px 14px 20px' }}>
+        <div
           style={{
-            margin: '0 0 16px 0',
-            fontSize: '22px',
-            fontWeight: '700',
-            color: colors.text,
-            letterSpacing: '-0.4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '16px',
+            position: 'relative',
           }}
         >
-          Messages
-        </h1>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '22px',
+              fontWeight: '700',
+              color: colors.text,
+              letterSpacing: '-0.4px',
+            }}
+          >
+            Messages
+          </h1>
+
+          {/* Self Profile Icon on Top Right */}
+          <div ref={profileRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setShowProfileCard((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: showProfileCard ? 'rgba(255,255,255,0.08)' : 'transparent',
+                border: `1px solid ${showProfileCard ? colors.accent : colors.border}`,
+                borderRadius: '24px',
+                padding: '3px 8px 3px 4px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              title={`Logged in as ${myName}`}
+            >
+              {/* Profile Avatar Circle */}
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)',
+                  padding: '1.5px',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    backgroundColor: colors.bg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: colors.text,
+                  }}
+                >
+                  {myInitial}
+                </div>
+                {/* Active Status Dot */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: '-1px',
+                    right: '-1px',
+                    width: '9px',
+                    height: '9px',
+                    borderRadius: '50%',
+                    backgroundColor: '#22c55e',
+                    border: `1.5px solid ${colors.bg}`,
+                  }}
+                />
+              </div>
+
+              {/* Self Username */}
+              <span
+                style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: colors.text,
+                  maxWidth: '75px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {myName}
+              </span>
+            </button>
+
+            {/* Profile Dropdown Card */}
+            {showProfileCard && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '42px',
+                  right: 0,
+                  backgroundColor: colors.cardBg,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '16px',
+                  padding: '14px',
+                  minWidth: '200px',
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+                  zIndex: 100,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)',
+                      padding: '1.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        backgroundColor: colors.bg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: '700',
+                        color: colors.text,
+                      }}
+                    >
+                      {myInitial}
+                    </div>
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: colors.text }}>
+                      {myName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: colors.subtext,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {currentUser?.email}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ height: '1px', backgroundColor: colors.border, margin: '2px 0' }} />
+
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    fontSize: '12.5px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  Log Out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Search Bar */}
         <div
@@ -255,7 +453,7 @@ export default function Sidebar({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search users to chat..."
+            placeholder="Search conversations..."
             style={{
               flex: 1,
               background: 'transparent',
@@ -283,12 +481,12 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Users / Conversation List */}
+      {/* Main Conversation Feed */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '8px 12px',
+          padding: '4px 12px',
           display: 'flex',
           flexDirection: 'column',
           gap: '4px',
@@ -297,7 +495,7 @@ export default function Sidebar({
         {filteredUsers.length === 0 ? (
           <div
             style={{
-              padding: '32px 16px',
+              padding: '36px 16px',
               textAlign: 'center',
               color: colors.subtext,
               fontSize: '13.5px',
@@ -306,7 +504,7 @@ export default function Sidebar({
           >
             {searchQuery
               ? 'No users found matching your search.'
-              : 'No conversations yet. Search a username above to start messaging!'}
+              : 'No active conversations yet. Search a user to begin!'}
           </div>
         ) : (
           filteredUsers.map((u) => {
