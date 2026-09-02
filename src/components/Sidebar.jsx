@@ -34,7 +34,6 @@ export default function Sidebar({
   const [showThemeMenu, setShowThemeMenu] = useState(false)
   const menuRef = useRef(null)
 
-  // Safe theme fallback
   const colors = { ...DEFAULT_THEME_COLORS, ...(themeColors || {}) }
   const currentUserId = currentUser?.id
 
@@ -80,7 +79,7 @@ export default function Sidebar({
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
   }
 
-  // 1. Fetch users
+  // 1. Fetch all user profiles for display lookup
   useEffect(() => {
     if (!currentUserId) return
 
@@ -98,7 +97,7 @@ export default function Sidebar({
     fetchUsers()
   }, [currentUserId])
 
-  // 2. Fetch latest messages & unread counts
+  // 2. Fetch latest messages & build active conversation list
   useEffect(() => {
     if (!currentUserId) return
 
@@ -136,7 +135,7 @@ export default function Sidebar({
 
     fetchMetadata()
 
-    // 3. Realtime subscription
+    // Realtime message updates for sidebar badges
     const channel = supabase
       .channel('sidebar-messages-sync')
       .on(
@@ -183,12 +182,24 @@ export default function Sidebar({
     onSelectUser(userItem)
   }
 
+  // Display only active conversations by default; search the full userbase when typing
   const filteredUsers = useMemo(() => {
+    const trimmedQuery = searchQuery.toLowerCase().trim()
+
+    if (trimmedQuery.length > 0) {
+      return users.filter((u) => {
+        const name = (u.username || u.email || '').toLowerCase()
+        return name.includes(trimmedQuery)
+      })
+    }
+
+    // Default view: show users only if there is conversation history or if currently selected
     return users.filter((u) => {
-      const name = (u.username || u.email || '').toLowerCase()
-      return name.includes(searchQuery.toLowerCase().trim())
+      const hasMessages = Boolean(conversations[u.id]?.lastMessageTime)
+      const isSelected = selectedUser?.id === u.id
+      return hasMessages || isSelected
     })
-  }, [users, searchQuery])
+  }, [users, conversations, searchQuery, selectedUser])
 
   return (
     <div
@@ -244,7 +255,7 @@ export default function Sidebar({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search user..."
+            placeholder="Search users to chat..."
             style={{
               flex: 1,
               background: 'transparent',
@@ -286,13 +297,16 @@ export default function Sidebar({
         {filteredUsers.length === 0 ? (
           <div
             style={{
-              padding: '24px 12px',
+              padding: '32px 16px',
               textAlign: 'center',
               color: colors.subtext,
-              fontSize: '13px',
+              fontSize: '13.5px',
+              lineHeight: '1.5',
             }}
           >
-            {searchQuery ? 'No users found' : 'No conversations yet'}
+            {searchQuery
+              ? 'No users found matching your search.'
+              : 'No conversations yet. Search a username above to start messaging!'}
           </div>
         ) : (
           filteredUsers.map((u) => {
@@ -451,7 +465,6 @@ export default function Sidebar({
           backgroundColor: colors.cardBg,
         }}
       >
-        {/* Themes Button */}
         <button
           onClick={() => setShowThemeMenu((prev) => !prev)}
           style={{
@@ -471,7 +484,6 @@ export default function Sidebar({
           <span>⚙️</span> Themes
         </button>
 
-        {/* Direct Logout Button */}
         <button
           onClick={handleSignOut}
           style={{
@@ -497,7 +509,6 @@ export default function Sidebar({
           Logout
         </button>
 
-        {/* Enhanced Theme Dropdown Menu */}
         {showThemeMenu && (
           <div
             style={{
